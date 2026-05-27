@@ -18,9 +18,10 @@ def new_logic():
     #TODO: Llama a las funciónes de creación de las estructuras de datos
     analyzer = {}
     capacity = 1000000 # revisar el numero
-    analyzer["vertices_map"] = mp.new_map(capacity) #HECHO
-    analyzer["mmsi_records_map"] = mp.new_map(capacity)
-    analyzer["edge_info_map"] = mp.new_map(capacity)
+    load_factor = 0.5
+    analyzer["vertices_map"] = mp.new_map(capacity, load_factor) #HECHO
+    analyzer["mmsi_records_map"] = mp.new_map(capacity, load_factor)
+    analyzer["edge_info_map"] = mp.new_map(capacity, load_factor)
     analyzer["g_distance"] = gr.new_graph(capacity)  
     analyzer["g_time"] = gr.new_graph(capacity) 
     analyzer["total_records"] = 0
@@ -61,6 +62,11 @@ def new_cluster(dest_cluster):
     }
     return cluster
 
+def compare_elements(element_a, element_b):
+    if str(element_a).strip() == str(element_b).strip():
+        return 0
+    return -1
+
 def add_record_to_cluster(cluster, record):
     cluster["lat_sum"] += float(record["LAT"])
     cluster["lon_sum"] += float(record["LON"])
@@ -78,23 +84,23 @@ def add_record_to_cluster(cluster, record):
     al.add_last(cluster["records"], record)
     
     mmsi = record["MMSI"]
-    if al.is_present(cluster["mmsi_list"], mmsi) == 0:
+    if al.is_present(cluster["mmsi_list"], mmsi, compare_elements) == -1:
         al.add_last(cluster["mmsi_list"], mmsi)
         
     vessel_name = record["VESSELNAME"]
-    if al.is_present(cluster["vessel_names"], vessel_name) == 0:
+    if al.is_present(cluster["vessel_names"], vessel_name, compare_elements) == -1:
         al.add_last(cluster["vessel_names"], vessel_name)
     
     vessel_type = record["VESSELTYPE"]
-    if al.is_present(cluster["vessel_types"], vessel_type) == 0:
+    if al.is_present(cluster["vessel_types"], vessel_type, compare_elements) == -1:
         al.add_last(cluster["vessel_types"], vessel_type)
     
     cargo_type = record["CARGO"]
-    if al.is_present(cluster["cargo_types"], cargo_type) == 0:
+    if al.is_present(cluster["cargo_types"], cargo_type, compare_elements) == -1:
         al.add_last(cluster["cargo_types"], cargo_type)
     
     speed_category = record["SPEED_CATEGORY"]
-    if al.is_present(cluster["speed_categories"], speed_category) == 0:
+    if al.is_present(cluster["speed_categories"], speed_category, compare_elements) == -1:
         al.add_last(cluster["speed_categories"], speed_category)
 
 def calculate_cluster_averages(cluster):
@@ -142,7 +148,7 @@ def build_edges_info_map(catalog):
     mmsi_map = catalog["mmsi_records_map"]
     mmsi_keys = mp.key_set(mmsi_map)
     
-    for i in range(1, al.size(mmsi_keys)+1):
+    for i in range(al.size(mmsi_keys)):
         mmsi = al.get_element(mmsi_keys, i)
         pq_records = mp.get(mmsi_map, mmsi)
         
@@ -151,7 +157,7 @@ def build_edges_info_map(catalog):
             record = pq.remove(pq_records)
             al.add_last(sort_records, record)
             
-        for j in range(1, al.size(sort_records)):
+        for j in range(al.size(sort_records)-1):
             record_a = al.get_element(sort_records, j)
             record_b = al.get_element(sort_records, j+1)
             
@@ -204,14 +210,14 @@ def calculate_edges_avg_time(catalog):
     edge_info_map = catalog["edge_info_map"]
     edge_keys = mp.key_set(edge_info_map)
     
-    for i in range(1, al.size(edge_keys)+1):
+    for i in range(al.size(edge_keys)):
         edge_id = al.get_element(edge_keys, i)
         edge_info = mp.get(edge_info_map, edge_id)
         
         times = edge_info["times"]
         
         total = 0
-        for j in range(1, al.size(times)+1):
+        for j in range(al.size(times)):
             total += al.get_element(times, j)
         
         avg = total / al.size(times)
@@ -222,7 +228,7 @@ def build_graphs(catalog):
     vertices_map = catalog["vertices_map"]
     vertices_keys = mp.key_set(vertices_map)
     
-    for i in range(1, al.size(vertices_keys)+1):
+    for i in range(al.size(vertices_keys)):
         vertex_id = al.get_element(vertices_keys, i)
         vertex_info = mp.get(vertices_map, vertex_id)
         
@@ -232,7 +238,7 @@ def build_graphs(catalog):
     edge_info_map = catalog["edge_info_map"]
     edge_keys = mp.key_set(edge_info_map)
     
-    for i in range(1, al.size(edge_keys)+1):
+    for i in range(al.size(edge_keys)):
         edge_id = al.get_element(edge_keys, i)
         edge_info = mp.get(edge_info_map, edge_id)
         
@@ -268,7 +274,7 @@ def load_data(catalog, filename):
     file.close()
     
     vertex_keys = mp.key_set(catalog["vertices_map"])
-    for i in range(1, al.size(vertex_keys)+1):
+    for i in range(al.size(vertex_keys)):
         vertex_id = al.get_element(vertex_keys, i)
         cluster = mp.get(catalog["vertices_map"], vertex_id)
         calculate_cluster_averages(cluster)
@@ -289,12 +295,12 @@ def load_data(catalog, filename):
     total = al.size(lista_ordenada)
     
     for i in range(5):
-        vertex_id = al.get_element(lista_ordenada, i+1)
+        vertex_id = al.get_element(lista_ordenada, i)
         vertex_info = mp.get(catalog["vertices_map"], vertex_id)
         primeros_5.append(vertex_info)
     
     for i in range(total - 5, total):
-        vertex_id = al.get_element(lista_ordenada, i+1)
+        vertex_id = al.get_element(lista_ordenada, i)
         vertex_info = mp.get(catalog["vertices_map"], vertex_id)
         ultimos_5.append(vertex_info)
     

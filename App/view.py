@@ -1,12 +1,17 @@
 import sys
-
+import App.logic as logic
+from tabulate import tabulate
+from DataStructures.List import array_list as al
+from DataStructures.Map import map_linear_probing as lp
+from DataStructures.Graph import diagraph as gr
 
 def new_logic():
     """
         Se crea una instancia del controlador
     """
     #TODO: Llamar la función de la lógica donde se crean las estructuras de datos
-    pass
+    control = logic.new_logic()
+    return control
 
 def print_menu():
     print("Bienvenido")
@@ -24,9 +29,64 @@ def load_data(control):
     Carga los datos
     """
     #TODO: Realizar la carga de datos
-    pass
+    numero_data = input("Ingrese el número de datos a cargar entre 20, 40, 60, 80, 100: ")
+    while numero_data not in ["20", "40", "60", "80", "100"]:
+        print("Número de datos no válido")
+        numero_data = input("Ingrese el número de datos a cargar entre 20, 40, 60, 80, 100: ")
+        
+    input_file = f"ais_maritime_traffic_{numero_data}pct.csv"
+    datos = logic.load_data(control, input_file)
+    
+    print(f"\nTiempo de carga: {datos['tiempo']} ms")
+    print(f"Total de embarcaciones: {datos['total_vessels']}")
+    print(f"Total de registros: {datos['total_records']}")
+    print(f"Total de vértices: {datos['total_vertices']}")
+    print(f"Total de arcos: {datos['total_arcos']}")
+    
+    print("\nPrimeros 5 vértices:")
+    primeros_5 = []
+    
+    for i in range(len(datos["primeros_5"])):
+        vertice = datos["primeros_5"][i]
+        vertice_info = print_vertice(vertice)
+        primeros_5.append(vertice_info)
+    print(tabulate(primeros_5, headers="keys", tablefmt="fancy_grid"))
+    
+    print("\nÚltimos 5 vértices:")
+    ultimos_5 = []
+    
+    for i in range(len(datos["ultimos_5"])):
+        vertice = datos["ultimos_5"][i]
+        vertice_info = print_vertice(vertice)
+        ultimos_5.append(vertice_info)
+    print(tabulate(ultimos_5, headers="keys", tablefmt="fancy_grid"))
+    
+    print("\nDatos cargados exitosamente\n")
+    
+def print_vertice(vertice):
 
-
+    mmsi_str = ""
+    size_mmsi = al.size(vertice["mmsi_list"])
+    if size_mmsi >= 3:
+        limite_a_mostrar = 3
+    else:
+        limite_a_mostrar = size_mmsi
+        
+    for i in range(limite_a_mostrar):  
+        mmsi_str += str(al.get_element(vertice["mmsi_list"], i))
+        if i < limite_a_mostrar:
+            mmsi_str += ", "
+    if size_mmsi > 3:
+        mmsi_str+= ", ..."
+    return {
+        "ID vertice": vertice["id"],
+        "Latitud": vertice["lat"],
+        "Longitud": vertice["lon"],
+        "Embarcaciones asociadas": mmsi_str,
+        "Registros asociados": vertice["records_count"],
+        "Velocidad promedio": vertice["avg_sog"]
+    }
+       
 def print_data(control, id):
     """
         Función que imprime un dato dado su ID
@@ -112,7 +172,7 @@ def main():
         elif int(inputs) == 5:
             print_req_5(control)
 
-        elif int(inputs) == 5:
+        elif int(inputs) == 6:
             print_req_6(control)
 
         elif int(inputs) == 7:
