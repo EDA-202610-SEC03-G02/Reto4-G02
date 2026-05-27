@@ -1,5 +1,15 @@
 import time 
-from DataStructures import map as mp
+import math
+import csv
+import os
+from datetime import datetime
+from DataStructures.Map import map_linear_probing as mp
+from DataStructures.List import array_list as al
+from DataStructures.Graph import diagraph as gr
+from DataStructures.Priority_queue import priority_queue as pq
+
+data_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__))) + '/Data/Data/'
+
 
 def new_logic():
     """
@@ -11,9 +21,11 @@ def new_logic():
     analyzer["vertices_map"] = mp.new_map(capacity) #HECHO
     analyzer["mmsi_records_map"] = mp.new_map(capacity)
     analyzer["edge_info_map"] = mp.new_map(capacity)
-    analyzer["g_distance"] = gr.new_graph() # revisar parametro
+    analyzer["g_distance"] = gr.new_graph(capacity)  
+    analyzer["g_time"] = gr.new_graph(capacity) 
     analyzer["total_records"] = 0
     analyzer["total_vessels"] = 0
+    analyzer["creation_orden"] = al.new_list()
 
     return analyzer
 
@@ -47,40 +59,257 @@ def new_cluster(dest_cluster):
         "avg_width": None,
         "avg_draft": None
     }
-
     return cluster
+
+def add_record_to_cluster(cluster, record):
+    cluster["lat_sum"] += float(record["LAT"])
+    cluster["lon_sum"] += float(record["LON"])
+    cluster["sog_sum"] += float(record["SOG"])
+    
+    if record["LENGTH"] != "":
+        cluster["length_sum"] += float(record["LENGTH"]) 
+    if record["WIDTH"] != "":
+        cluster["width_sum"] += float(record["WIDTH"])
+    if record["DRAFT"] != "":
+        cluster["draft_sum"] += float(record["DRAFT"])
+    
+    cluster["records_count"] += 1
+
+    al.add_last(cluster["records"], record)
+    
+    mmsi = record["MMSI"]
+    if al.is_present(cluster["mmsi_list"], mmsi) == 0:
+        al.add_last(cluster["mmsi_list"], mmsi)
+        
+    vessel_name = record["VESSELNAME"]
+    if al.is_present(cluster["vessel_names"], vessel_name) == 0:
+        al.add_last(cluster["vessel_names"], vessel_name)
+    
+    vessel_type = record["VESSELTYPE"]
+    if al.is_present(cluster["vessel_types"], vessel_type) == 0:
+        al.add_last(cluster["vessel_types"], vessel_type)
+    
+    cargo_type = record["CARGO"]
+    if al.is_present(cluster["cargo_types"], cargo_type) == 0:
+        al.add_last(cluster["cargo_types"], cargo_type)
+    
+    speed_category = record["SPEED_CATEGORY"]
+    if al.is_present(cluster["speed_categories"], speed_category) == 0:
+        al.add_last(cluster["speed_categories"], speed_category)
+
+def calculate_cluster_averages(cluster):
+    if cluster["records_count"] > 0:
+        cluster["lat"] = round(cluster["lat_sum"] / cluster["records_count"], 2)
+        cluster["lon"] = round(cluster["lon_sum"] / cluster["records_count"], 2)
+        cluster["avg_sog"] = round(cluster["sog_sum"] / cluster["records_count"], 2)
+        cluster["avg_length"] = round(cluster["length_sum"] / cluster["records_count"], 2)
+        cluster["avg_width"] = round(cluster["width_sum"] / cluster["records_count"], 2)
+        cluster["avg_draft"] = round(cluster["draft_sum"] / cluster["records_count"], 2)
+
+def add_record_to_mmsi_map(catalog, record):
+    
+    mmsi = record["MMSI"]
+    priority_queue = mp.get(catalog["mmsi_records_map"], mmsi)
+    
+    if priority_queue is None:
+        priority_queue = pq.new_heap()
+        mp.put(catalog["mmsi_records_map"], mmsi, priority_queue)
+    
+    priority = record["BASEDATETIME"]  
+    pq.insert(priority_queue, priority, record)
+
+def new_edge_info(source, target, distance):
+    
+    edge_info = {
+        "source": source,
+        "target": target,
+        "trips_count": 0,
+        "distance": distance,
+        "times" : al.new_list(),
+        "trip_mmsi_list": al.new_list(),
+        "trip_speed_categories": al.new_list(),
+        "avg_time": None
+    }
+    return edge_info
+
+def add_trip_to_edge_info(edge_info, trip_time, mmsi, speed_category):
+    edge_info["trips_count"] += 1
+    al.add_last(edge_info["times"], trip_time)
+    al.add_last(edge_info["trip_mmsi_list"], mmsi)
+    al.add_last(edge_info["trip_speed_categories"], speed_category)
+
+def build_edges_info_map(catalog):
+    mmsi_map = catalog["mmsi_records_map"]
+    mmsi_keys = mp.key_set(mmsi_map)
+    
+    for i in range(1, al.size(mmsi_keys)+1):
+        mmsi = al.get_element(mmsi_keys, i)
+        pq_records = mp.get(mmsi_map, mmsi)
+        
+        sort_records = al.new_list()
+        while not pq.is_empty(pq_records):
+            record = pq.remove(pq_records)
+            al.add_last(sort_records, record)
+            
+        for j in range(1, al.size(sort_records)):
+            record_a = al.get_element(sort_records, j)
+            record_b = al.get_element(sort_records, j+1)
+            
+            source = record_a["DEST_CLUSTER"].strip()
+            target = record_b["DEST_CLUSTER"].strip()
+            
+            if source != target:
+                
+                edge_id = source + "-" + target
+                      
+                trip_time = calculate_time_difference(record_a["BASEDATETIME"], record_b["BASEDATETIME"])
+                
+                speed_category = record_b["SPEED_CATEGORY"]
+                
+                edge_info = mp.get(catalog["edge_info_map"], edge_id)
+                
+                if edge_info is None:
+                    source_vertex = mp.get(catalog["vertices_map"], source)
+                    target_vertex = mp.get(catalog["vertices_map"], target)
+                  
+                    distance = haversine_distance(source_vertex["lat"], source_vertex["lon"], target_vertex["lat"], target_vertex["lon"])        
+                    edge_info = new_edge_info(source, target, distance)
+                    mp.put(catalog["edge_info_map"], edge_id, edge_info)
+                    
+                add_trip_to_edge_info(edge_info, trip_time, mmsi, speed_category)
+                
+def haversine_distance(lat1, lon1, lat2, lon2):
+    lat1_rad = math.radians(lat1)
+    lon1_rad = math.radians(lon1)
+    lat2_rad = math.radians(lat2)
+    lon2_rad = math.radians(lon2)
+    
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+    
+    a = math.sin(dlat / 2)**2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    radius_earth_km = 6371
+    distance = radius_earth_km * c
+    return distance
+
+def calculate_time_difference(datetime_a, datetime_b):
+    date_format = "%Y-%m-%d %H:%M:%S"
+    dt_a = datetime.strptime(datetime_a, date_format)
+    dt_b = datetime.strptime(datetime_b, date_format)
+    time_dif = dt_b - dt_a
+    return time_dif.total_seconds()
+
+def calculate_edges_avg_time(catalog):
+    edge_info_map = catalog["edge_info_map"]
+    edge_keys = mp.key_set(edge_info_map)
+    
+    for i in range(1, al.size(edge_keys)+1):
+        edge_id = al.get_element(edge_keys, i)
+        edge_info = mp.get(edge_info_map, edge_id)
+        
+        times = edge_info["times"]
+        
+        total = 0
+        for j in range(1, al.size(times)+1):
+            total += al.get_element(times, j)
+        
+        avg = total / al.size(times)
+        
+        edge_info["avg_time"] = round(avg, 2)
+        
+def build_graphs(catalog):
+    vertices_map = catalog["vertices_map"]
+    vertices_keys = mp.key_set(vertices_map)
+    
+    for i in range(1, al.size(vertices_keys)+1):
+        vertex_id = al.get_element(vertices_keys, i)
+        vertex_info = mp.get(vertices_map, vertex_id)
+        
+        gr.insert_vertex(catalog["g_distance"], vertex_id, vertex_info)
+        gr.insert_vertex(catalog["g_time"], vertex_id, vertex_info)
+        
+    edge_info_map = catalog["edge_info_map"]
+    edge_keys = mp.key_set(edge_info_map)
+    
+    for i in range(1, al.size(edge_keys)+1):
+        edge_id = al.get_element(edge_keys, i)
+        edge_info = mp.get(edge_info_map, edge_id)
+        
+        source = edge_info["source"]
+        target = edge_info["target"]
+        distance = edge_info["distance"]
+        avg_time = edge_info["avg_time"]
+        gr.add_edge(catalog["g_distance"], source, target, distance)
+        gr.add_edge(catalog["g_time"], source, target, avg_time)
 
 def load_data(catalog, filename):
     """
     Carga los datos del reto
     """
-    # TODO: Realizar la carga de datos
-    
-    star_time = get_time()
+    start_time = get_time()
     computer_file = data_dir + filename
     file = open(computer_file, encoding="utf-8")
     input_file = csv.DictReader(file)
     
     for record in input_file:
-        cluster_id = record["DEST_CLUSTER"].lower().strip()
-        if mp.get(catalog["vertices_map"], cluster_id) is None:
-            new_info = new_cluster(cluster_id)
-            mp.put(catalog["vertices_map"], cluster_id, new_info)
-        else:
-            cluster = mp.get(catalog["vertices_map"], cluster_id)
-        cluster["lat_sum"] += float(record["lat"])
-        cluster["lon_sum"] += float(record["lon"])
-        cluster["sog_sum"] += float(record["sog"])
-        cluster["length_sum"] += float(record["length"])
-        cluster["width_sum"] += float(record["width"])
-        cluster["draft_sum"] += float(record["draft"])
-        cluster["records_count"] += 1
-        #APPENDS EN LAS LISTAS
-        al.add_last(cluster["records"], record)
-        #PROMEDIOS
+        cluster_id = record["DEST_CLUSTER"].strip()
+        cluster = mp.get(catalog["vertices_map"], cluster_id)
         
+        if cluster is None:
+            cluster = new_cluster(cluster_id)
+            mp.put(catalog["vertices_map"], cluster_id, cluster)
+            al.add_last(catalog["creation_orden"], cluster_id)
         
-        
+        add_record_to_cluster(cluster, record)
+        add_record_to_mmsi_map(catalog, record)
+        catalog["total_records"] += 1
+    
+    file.close()
+    
+    vertex_keys = mp.key_set(catalog["vertices_map"])
+    for i in range(1, al.size(vertex_keys)+1):
+        vertex_id = al.get_element(vertex_keys, i)
+        cluster = mp.get(catalog["vertices_map"], vertex_id)
+        calculate_cluster_averages(cluster)
+    
+    build_edges_info_map(catalog)
+    calculate_edges_avg_time(catalog)
+    build_graphs(catalog)
+    
+    catalog["total_vessels"] = al.size(mp.key_set(catalog["mmsi_records_map"]))
+    
+    total_vertices = gr.order(catalog["g_distance"])
+    total_arcos = gr.size(catalog["g_distance"])
+    
+    primeros_5 = []
+    ultimos_5 = []
+    
+    lista_ordenada = catalog["creation_orden"]
+    total = al.size(lista_ordenada)
+    
+    for i in range(5):
+        vertex_id = al.get_element(lista_ordenada, i+1)
+        vertex_info = mp.get(catalog["vertices_map"], vertex_id)
+        primeros_5.append(vertex_info)
+    
+    for i in range(total - 5, total):
+        vertex_id = al.get_element(lista_ordenada, i+1)
+        vertex_info = mp.get(catalog["vertices_map"], vertex_id)
+        ultimos_5.append(vertex_info)
+    
+    end_time = get_time()
+    tiempo = delta_time(start_time, end_time)
+    
+    return  {
+        "tiempo": tiempo,
+        "total_vessels": catalog["total_vessels"],
+        "total_records": catalog["total_records"],
+        "total_vertices": total_vertices,
+        "total_arcos": total_arcos,
+        "primeros_5": primeros_5,
+        "ultimos_5": ultimos_5
+    }
 # Funciones de consulta sobre el catálogo
 
 
