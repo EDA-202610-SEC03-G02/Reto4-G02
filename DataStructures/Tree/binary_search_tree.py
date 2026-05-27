@@ -152,7 +152,7 @@ def height(my_bst):
 
 def height_tree(root):
     if root is None:
-        return -1
+        return 0
     else:
         izq = height_tree(root["left"])
         der = height_tree(root["right"])
@@ -162,7 +162,7 @@ def height_tree(root):
             return 1 + der
         
 def keys(my_bst, key_initial, key_final):
-    key_list = al.new_list()
+    key_list = sl.new_list()
     key_range(my_bst["root"], key_initial, key_final, key_list)
     return key_list
 
@@ -172,7 +172,7 @@ def key_range(root, key_initial, key_final, list_key):
         if key > key_initial:
             key_range(root["left"], key_initial, key_final, list_key)
         if key >= key_initial and key <= key_final:
-            al.add_last(list_key, key)
+            sl.add_last(list_key, key)
         if key < key_final:
             key_range(root["right"], key_initial, key_final, list_key)
 

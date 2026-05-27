@@ -16,6 +16,9 @@ def rehash(my_map):
    my_map["capacity"] = new_table["capacity"]
    my_map["size"] = new_table["size"]
    my_map["current_factor"] = new_table["current_factor"]
+   my_map["size"] = new_table["size"]
+   my_map["shift"] = new_table["shift"]
+   my_map["scale"] = new_table["scale"]
    return new_table
 def new_map(num_elements, load_factor, prime=109345121):
    capacity = mf.next_prime(int(num_elements / load_factor))
