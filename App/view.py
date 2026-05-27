@@ -112,8 +112,49 @@ def print_req_2(control):
         Función que imprime la solución del Requerimiento 2 en consola
     """
     # TODO: Imprimir el resultado del requerimiento 2
-    pass
+    
+    cluster_id = input("Ingrese el identificador de la zona (DEST_CLUSTER): ").strip()
 
+    radio_str = input("Ingrese el radio del área de interés en KM: ").strip()
+    while not radio_str.replace(".", "", 1).isdigit() or float(radio_str) <= 0:
+        print("Radio no válido. Ingrese un número positivo.")
+        radio_str = input("Ingrese el radio del área de interés en KM: ").strip()
+    radio = float(radio_str)
+
+    resultado = logic.req_2(control, cluster_id, radio)
+
+    if "error" in resultado:
+        
+        print("\nError: " + str(resultado["error"]))
+    else:
+       
+        print("\n" + "="*60)
+        print("REQ. 2 — Área de navegación alrededor de la zona: " + str(resultado["zona_origen"]))
+        print("Radio especificado: " + str(resultado["radio"]) + " km")
+        print("Total de zonas encontradas dentro del radio: " + str(resultado["total_zonas"]))
+        print("="*60 + "\n")
+
+        if resultado["total_zonas"] == 0:
+           
+            print("No se encontraron zonas dentro del radio especificado.")
+        else:
+            
+            zonas_lista = resultado["zonas"]
+            filas = []
+
+            for i in range(al.size(zonas_lista)):
+                zona = al.get_element(zonas_lista, i)
+                filas.append({
+                    "ID Zona":zona["id"],
+                    "Latitud":zona["lat"],
+                    "Longitud":zona["lon"],
+                    "Registros":zona["records_count"],
+                    "Vel. Promedio (SOG)":zona["avg_sog"],
+                    "Distancia (km)": zona["distancia"]
+                })
+
+            print(tabulate(filas, headers="keys", tablefmt="fancy_grid"))
+            
 
 def print_req_3(control):
     """

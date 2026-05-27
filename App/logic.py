@@ -338,12 +338,56 @@ def req_1(catalog):
     pass
 
 
-def req_2(catalog):
+def req_2(catalog, cluster_id, radio):
     """
     Retorna el resultado del requerimiento 2
     """
     # TODO: Modificar el requerimiento 2
-    pass
+    
+    zona_origen = mp.get(catalog["vertices_map"], cluster_id)
+    if zona_origen is None:
+        return {"error": f"La zona '{cluster_id}' no existe en los datos."}
+
+    lat_origen = zona_origen["lat"]
+    lon_origen = zona_origen["lon"]
+
+
+    vertices_grafo = gr.vertices(catalog["g_distance"])
+
+    zonas_en_radio = al.new_list()
+
+    for i in range(al.size(vertices_grafo)):
+        vertex_id = al.get_element(vertices_grafo, i)
+        vertice = mp.get(catalog["vertices_map"], vertex_id)
+
+        if vertice is not None and vertice["lat"] is not None and vertice["lon"] is not None:
+            distancia = haversine_distance(lat_origen, lon_origen, vertice["lat"], vertice["lon"])
+        
+            if distancia <= radio:
+                zona_info = {
+                    "id": vertice["id"],
+                    "lat": vertice["lat"],
+                    "lon": vertice["lon"],
+                    "records_count": vertice["records_count"],
+                    "avg_sog": vertice["avg_sog"] if vertice["avg_sog"] is not None else "Unknown",
+                    "distancia": round(distancia, 2)
+                }
+                al.add_last(zonas_en_radio, zona_info)
+
+    al.merge_sort(zonas_en_radio, comparar_zonas_req2)
+
+    return {
+        "zona_origen": cluster_id,
+        "radio": radio,
+        "total_zonas": al.size(zonas_en_radio),
+        "zonas": zonas_en_radio
+    }
+
+def comparar_zonas_req2(zona_a, zona_b):
+   
+    if zona_a["distancia"] != zona_b["distancia"]:
+        return zona_a["distancia"] < zona_b["distancia"]
+    return str(zona_a["id"]) < str(zona_b["id"])
 
 
 def req_3(catalog, n):
