@@ -335,13 +335,58 @@ def req_2(catalog):
     pass
 
 
-def req_3(catalog):
+def req_3(catalog, n):
     """
     Retorna el resultado del requerimiento 3
     """
     # TODO: Modificar el requerimiento 3
-    pass
+    edge_info_map = catalog["edge_info_map"]
+    arcos_lista = mp.value_set(edge_info_map)
+    
+    al.merge_sort(arcos_lista, comparar_arcos_req3)
+    
+    resultado = al.new_list()
+    if al.size(arcos_lista) > n:
+        limite = n
+    else:
+        limite = al.size(arcos_lista)
+    
+        
+    for i in range(limite):
+        edge_info = al.get_element(arcos_lista, i)
+        
+        distancia = edge_info["distance"]
+        tiempo = edge_info["avg_time"]
+    
+        if distancia is not None:
+            dist_final = round(distancia, 2)
+        else:
+            dist_final = "Unknown"
+        if tiempo is not None:
+            tiempo_final = round(tiempo, 2)
+        else:
+            tiempo_final = "Unknown"
+            
+        info = {
+            "origen": edge_info["source"],
+            "destino": edge_info["target"],
+            "cantidad_viajes": edge_info["trips_count"],
+            "distancia": dist_final,
+            "tiempo_promedio": tiempo_final
+        }
+        
+        al.add_last(resultado, info)
+    
+    return resultado
 
+def comparar_arcos_req3(arco_a, arco_b):
+    if arco_a["trips_count"] != arco_b["trips_count"]:
+        return arco_a["trips_count"] > arco_b["trips_count"]
+        
+    if arco_a["source"] != arco_b["source"]:
+        return arco_a["source"] < arco_b["source"]
+        
+    return arco_a["target"] < arco_b["target"]
 
 def req_4(catalog):
     """

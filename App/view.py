@@ -115,8 +115,33 @@ def print_req_3(control):
         Función que imprime la solución del Requerimiento 3 en consola
     """
     # TODO: Imprimir el resultado del requerimiento 3
-    pass
+    top_n = input("Ingrese el número de vértices a mostrar: ")
+    while not top_n.isdigit() or int(top_n) <= 0:
+        print("Número no válido. Por favor, ingrese un número entero positivo.")
+        top_n = input("Ingrese el número de vértices a mostrar: ")
+    
+    top_n = int(top_n)
+    resultado = logic.req_3(control, top_n)
+    
+    if al.size(resultado) == 0:
+        print("No se encontraron vértices con registros asociados.")
+        return
+    
+    print(f"\nTop {top_n} vértices con mayor número de registros asociados:")
+    
+    top_n_vertices = []
+    for i in range(al.size(resultado)):
+        vertice = al.get_element(resultado, i)
+        info_vertice = {
+            "Origen": vertice["origen"],
+            "Destino": vertice["destino"],
+            "Numero de viajes": vertice["cantidad_viajes"],
+            "Distancia": vertice["distancia"],
+            "Tiempo promedio": vertice["tiempo_promedio"]
+        }
+        top_n_vertices.append(info_vertice)
 
+    print(tabulate(top_n_vertices, headers="keys", tablefmt="fancy_grid"))
 
 def print_req_4(control):
     """
