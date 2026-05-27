@@ -65,19 +65,24 @@ def load_data(control):
     
 def print_vertice(vertice):
 
-    mmsi_str = ""
-    size_mmsi = al.size(vertice["mmsi_list"])
+    mmsi_list = vertice["mmsi_list"]
+    size_mmsi = al.size(mmsi_list)
+    
     if size_mmsi >= 3:
         limite_a_mostrar = 3
     else:
         limite_a_mostrar = size_mmsi
         
+    mmsi_partes = []
+        
     for i in range(limite_a_mostrar):  
-        mmsi_str += str(al.get_element(vertice["mmsi_list"], i))
-        if i < limite_a_mostrar:
-            mmsi_str += ", "
+        mmsi_partes.append(str(al.get_element(mmsi_list, i)))
+    
+    mmsi_str = ", ".join(mmsi_partes)
+    
     if size_mmsi > 3:
         mmsi_str+= ", ..."
+        
     return {
         "ID vertice": vertice["id"],
         "Latitud": vertice["lat"],
