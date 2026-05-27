@@ -50,7 +50,7 @@ def load_data(control):
         vertice = datos["primeros_5"][i]
         vertice_info = print_vertice(vertice)
         primeros_5.append(vertice_info)
-    print(tabulate(primeros_5, headers="keys", tablefmt="fancy_grid"))
+    print(tabulate(primeros_5, headers="keys", tablefmt="fancy_grid",floatfmt="", numalign="left" ))
     
     print("\nÚltimos 5 vértices:")
     ultimos_5 = []
@@ -59,7 +59,7 @@ def load_data(control):
         vertice = datos["ultimos_5"][i]
         vertice_info = print_vertice(vertice)
         ultimos_5.append(vertice_info)
-    print(tabulate(ultimos_5, headers="keys", tablefmt="fancy_grid"))
+    print(tabulate(ultimos_5, headers="keys", tablefmt="fancy_grid", floatfmt="", numalign="left" ))
     
     print("\nDatos cargados exitosamente\n")
     
@@ -85,8 +85,8 @@ def print_vertice(vertice):
         
     return {
         "ID vertice": vertice["id"],
-        "Latitud": vertice["lat"],
-        "Longitud": vertice["lon"],
+        "Latitud": str(vertice["lat"]),
+        "Longitud": str(vertice["lon"]),
         "Embarcaciones asociadas": mmsi_str,
         "Registros asociados": vertice["records_count"],
         "Velocidad promedio": vertice["avg_sog"]
@@ -169,7 +169,51 @@ def print_req_6(control):
         Función que imprime la solución del Requerimiento 6 en consola
     """
     # TODO: Imprimir el resultado del requerimiento 6
-    pass
+    resultado = logic.req_6(control)
+    
+    tamano_resultado = al.size(resultado)
+    if tamano_resultado == 0:
+        print("No se encontraron subredes.")
+        return
+    
+    primer_elemento = al.get_element(resultado, 0)
+    total_subredes = primer_elemento["total_subred"]
+    
+    print(f"\nTotal de subredes encontradas: {total_subredes}")
+    
+    print("\nTop 5 subredes con más zonas de navegación:")
+    
+    subredes_tabla = []
+    for i in range(tamano_resultado):
+        subred = al.get_element(resultado, i)
+        lista_nodos = subred["zonas_ids"]
+        total_nodos = al.size(lista_nodos)
+        
+        if total_nodos <= 8:
+            nodos_mostrar = []
+            for j in range(total_nodos):
+                nodo_id = al.get_element(lista_nodos, j)
+                nodos_mostrar.append(str(nodo_id))
+            nodos_str = ", ".join(nodos_mostrar)
+        else:
+            primeros_3 = []
+            for j in range(3):
+                primeros_3.append(str(al.get_element(lista_nodos, j)))
+            ultimos_3 = []
+            for j in range(total_nodos - 3, total_nodos):
+                ultimos_3.append(str(al.get_element(lista_nodos, j)))
+            nodos_str = ", ".join(primeros_3) + ", ..., " + ", ".join(ultimos_3)
+        
+        subred_info = {
+            "ID subred": subred["subred_id"],
+            "Total zonas": subred["total_zonas"],
+            "ID Zonas": nodos_str,
+            "Velocidad promedio": subred["velocidad_promedio"],
+            "Total viajes": subred["total_viajes"]
+        }
+        subredes_tabla.append(subred_info)
+        
+    print(tabulate(subredes_tabla, headers="keys", tablefmt="fancy_grid", floatfmt="", numalign="left" ))
 
 # Se crea la lógica asociado a la vista
 control = new_logic()

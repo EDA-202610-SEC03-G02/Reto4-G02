@@ -6,7 +6,8 @@ from datetime import datetime
 from DataStructures.Map import map_linear_probing as mp
 from DataStructures.List import array_list as al
 from DataStructures.Graph import diagraph as gr
-from DataStructures.Priority_queue import priority_queue as pq
+from DataStructures.Graph import bfs as bfs
+from DataStructures.Graph import edge as edge
 
 data_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__))) + '/Data/Data/'
 
@@ -418,9 +419,143 @@ def req_6(catalog):
     Retorna el resultado del requerimiento 6
     """
     # TODO: Modificar el requerimiento 6
-    pass
+    grafo_dirigido = catalog["g_distance"]
+    vertices_lista = gr.vertices(grafo_dirigido)
+    total_vertices = gr.order(grafo_dirigido)
+    
+    if total_vertices == 0:
+        return al.new_list()
+    
+    g_nodir = crear_grafo_no_dirigido(grafo_dirigido, vertices_lista, total_vertices, catalog)
 
+    visited_map = mp.new_map(total_vertices*2, 0.5)
+    subrarcos_list = al.new_list()
+    
+    for i in range(total_vertices):
+        raiz_id = al.get_element(vertices_lista, i)
+        
+        if not mp.contains(visited_map, raiz_id):
+            mapa_sub_actual = mp.new_map(total_vertices*2, 0.5)
+            mp.put(mapa_sub_actual, raiz_id, {"edge_to": None, "dist_to": 0})
+            bfs.bfs_vertex(g_nodir, raiz_id, mapa_sub_actual)
+            
+            subred_data = procesar_subred(vertices_lista, total_vertices, mapa_sub_actual, visited_map, catalog)
+            al.add_last(subrarcos_list, subred_data)
+            
+    al.merge_sort(subrarcos_list,comparar_subredes)
+    resultado = al.new_list()
+    total_global = al.size(subrarcos_list)
+    if total_global > 5:
+        limite = 5
+    else:
+        limite = total_global
+        
+    for i in range(limite):
+        subred = al.get_element(subrarcos_list, i)
+        info_subred = {
+            "subred_id": i+1,
+            "total_subred": total_global,
+            "total_zonas": subred["total_zonas"],
+            "zonas_ids": subred["nodos"],
+            "total_viajes": subred["total_viajes"],
+            "velocidad_promedio": subred["velocidad_promedio"]
+        }
+        al.add_last(resultado, info_subred)
+    
+    return resultado
 
+def comparar_ids_ascendente(id_a, id_b):
+    return int(id_a) < int(id_b)
+
+def comparar_subredes(sub_a, sub_b):
+    if sub_a["total_zonas"] != sub_b["total_zonas"]:
+        return sub_a["total_zonas"] > sub_b["total_zonas"]
+    return sub_a["min_vertex_id"] < sub_b["min_vertex_id"]
+                
+def crear_grafo_no_dirigido(grafo_dirigido, vertices, total_v, catalog):
+    grafo_nodir = gr.new_graph(total_v)
+    
+    for i in range(total_v):
+        vertex_id = al.get_element(vertices, i)
+        vertex_info = mp.get(catalog["vertices_map"], vertex_id)
+        gr.insert_vertex(grafo_nodir, vertex_id, vertex_info)
+    
+    for i in range(total_v):
+        vertex_id = al.get_element(vertices, i)
+        adyacentes = gr.edges_vertex(grafo_dirigido, vertex_id)
+        
+        for j in range(al.size(adyacentes)):
+            arco = al.get_element(adyacentes, j)
+            vecino_id = edge.to(arco)
+            
+            if vertex_id != vecino_id:
+                arcos_regreso = gr.edges_vertex(grafo_dirigido, vecino_id)
+                existe_arco_regreso = False
+                
+                for k in range(al.size(arcos_regreso)):
+                    arco_regreso = al.get_element(arcos_regreso, k)
+                    vecino_regreso_id = edge.to(arco_regreso)
+                    
+                    if vecino_regreso_id == vertex_id:
+                        existe_arco_regreso = True
+                        break
+                    
+                if existe_arco_regreso:
+                    gr.add_edge(grafo_nodir, vertex_id, vecino_id, 1.0)
+                    gr.add_edge(grafo_nodir, vecino_id, vertex_id, 1.0)
+    return grafo_nodir
+
+def procesar_subred(vertices_lista, total_vertices, mapa_subred, visited_map, catalog):
+    nodos_subred = al.new_list()
+    total_viajes = 0
+    suma_velocidades = 0.0
+    
+    viaje_valido = True
+    velocidad_valida = True
+    
+    for i in range(total_vertices):
+        vertice_id = al.get_element(vertices_lista, i)
+        if mp.contains(mapa_subred, vertice_id):
+            mp.put(visited_map, vertice_id, True)
+            al.add_last(nodos_subred, vertice_id)
+            vertice_info = mp.get(catalog["vertices_map"], vertice_id)
+            if vertice_info:
+                if "records_count" in vertice_info and vertice_info["records_count"] is not None:
+                    total_viajes += vertice_info["records_count"]
+                else:
+                    viaje_valido = False
+                if "avg_sog" in vertice_info and vertice_info["avg_sog"] is not None:
+                    suma_velocidades += vertice_info["avg_sog"]
+                else:
+                    velocidad_valida = False
+            else:
+                viaje_valido = False
+                velocidad_valida = False
+    
+    al.merge_sort(nodos_subred, comparar_ids_ascendente)
+    total_zonas = al.size(nodos_subred)
+        
+    if total_zonas > 0 and velocidad_valida:
+        velocidad_promedio = round(suma_velocidades / total_zonas, 2)
+    else:
+        velocidad_promedio = "Unknown"
+        
+    if not viaje_valido:
+        total_viajes = "Unknown"
+        
+    if total_zonas > 0:
+        min_vertex_id = int(al.get_element(nodos_subred, 0))
+    else:
+        min_vertex_id = float('inf')
+        
+    return {
+        "total_zonas": total_zonas,
+        "nodos": nodos_subred,
+        "total_viajes": total_viajes,
+        "velocidad_promedio": velocidad_promedio,
+        "min_vertex_id": min_vertex_id
+    }
+    
 # Funciones para medir tiempos de ejecucion
 
 def get_time():
