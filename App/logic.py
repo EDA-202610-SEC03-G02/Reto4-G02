@@ -333,12 +333,125 @@ def load_data(catalog, filename):
 # Funciones de consulta sobre el catálogo
 
 
-def req_1(catalog):
-    """
-    Retorna el resultado del requerimiento 1
-    """
-    # TODO: Modificar el requerimiento 1
-    pass
+def req_1(catalog, source, destination):
+   """
+   Retorna el resultado del requerimiento 1
+   """
+
+
+   graph = catalog["g_distance"]
+
+
+   if not gr.contains_vertex(graph, source):
+       return {
+           "exists": False,
+           "reason": "El vértice origen no existe en el grafo."
+       }
+
+
+   if not gr.contains_vertex(graph, destination):
+       return {
+           "exists": False,
+           "reason": "El vértice destino no existe en el grafo."
+       }
+
+
+   visited_map = bfs.bfs(graph, source)
+
+
+   if not bfs.has_path_to(destination, visited_map):
+       return {
+           "exists": False,
+           "reason": "No existe trayectoria entre las zonas dadas."
+       }
+
+
+   path_stack = bfs.path_to(destination, visited_map)
+
+
+   path_list = al.new_list()
+
+
+   while not st.is_empty(path_stack):
+       node = st.pop(path_stack)
+       al.add_last(path_list, node)
+
+
+   total_zones = al.size(path_list)
+
+
+   vertices_to_show = al.new_list()
+
+
+   if total_zones <= 10:
+       for i in range(total_zones):
+           cluster_id = al.get_element(path_list, i)
+           al.add_last(vertices_to_show, build_req1_vertex(catalog, cluster_id))
+   else:
+       for i in range(5):
+           cluster_id = al.get_element(path_list, i)
+           al.add_last(vertices_to_show, build_req1_vertex(catalog, cluster_id))
+
+
+       for i in range(total_zones - 5, total_zones):
+           cluster_id = al.get_element(path_list, i)
+           al.add_last(vertices_to_show, build_req1_vertex(catalog, cluster_id))
+
+
+   return {
+       "exists": True,
+       "reason": "Sí existe trayectoria entre las zonas dadas.",
+       "total_zones": total_zones,
+       "vertices": vertices_to_show
+   }
+
+
+
+
+def build_req1_vertex(catalog, cluster_id):
+   vertex = gr.get_vertex_information(catalog["g_distance"], cluster_id)
+
+
+   vessel_names = vertex["vessel_names"]
+   n_names = al.size(vessel_names)
+
+
+   first_names = al.new_list()
+   last_names = al.new_list()
+
+
+   for i in range(min(3, n_names)):
+       name = al.get_element(vessel_names, i)
+
+
+       if name != "":
+           al.add_last(first_names, name)
+       else:
+           al.add_last(first_names, "Unknown")
+
+
+   start = max(0, n_names - 3)
+
+
+   for i in range(start, n_names):
+       name = al.get_element(vessel_names, i)
+
+
+       if name != "":
+           al.add_last(last_names, name)
+       else:
+           al.add_last(last_names, "Unknown")
+
+
+   return {
+       "id": vertex["id"],
+       "lat": vertex["lat"] if vertex["lat"] is not None else "Unknown",
+       "lon": vertex["lon"] if vertex["lon"] is not None else "Unknown",
+       "num_vessels": al.size(vertex["mmsi_list"]),
+       "vessel_names_first": first_names,
+       "vessel_names_last": last_names
+   }
+
 
 
 def req_2(catalog, cluster_id, radio):
@@ -446,12 +559,121 @@ def comparar_arcos_req3(arco_a, arco_b):
         
     return arco_a["target"] < arco_b["target"]
 
-def req_4(catalog):
-    """
-    Retorna el resultado del requerimiento 4
-    """
-    # TODO: Modificar el requerimiento 4
-    pass
+def req_4(catalog, source):
+   """
+   Retorna el resultado del requerimiento 4
+   """
+
+
+   graph = catalog["g_distance"]
+
+
+   if not gr.contains_vertex(graph, source):
+       return {
+           "exists": False,
+           "reason": "El vértice origen no existe en el grafo."
+       }
+
+
+   search = dij.dijkstra(graph, source)
+
+
+   visited = search["visited"]
+   visited_keys = mp.key_set(visited)
+
+
+   arcos_list = al.new_list()
+   total_cost = 0.0
+   total_zones = 0
+
+
+   for i in range(al.size(visited_keys)):
+       key = al.get_element(visited_keys, i)
+       info = mp.get(visited, key)
+
+
+       if info is not None and info["dist_to"] != float("inf"):
+           total_zones += 1
+
+
+           if info["edge_from"] is not None:
+               src_arc = info["edge_from"]
+               tgt_arc = key
+
+
+               src_info = mp.get(visited, src_arc)
+
+
+               if src_info is not None:
+                   arc_weight = round(info["dist_to"] - src_info["dist_to"], 2)
+                   total_cost += arc_weight
+
+
+                   al.add_last(arcos_list, {
+                       "source": src_arc,
+                       "target": tgt_arc,
+                       "weight": arc_weight
+                   })
+
+
+   total_cost = round(total_cost, 2)
+
+
+   al.merge_sort(arcos_list, compare_arcos_req4)
+
+
+   total_arcos = al.size(arcos_list)
+
+
+   first_five = al.new_list()
+   last_five = al.new_list()
+
+
+   limit_first = min(5, total_arcos)
+
+
+   for i in range(limit_first):
+       al.add_last(first_five, al.get_element(arcos_list, i))
+
+
+   start_last = max(0, total_arcos - 5)
+
+
+   for i in range(start_last, total_arcos):
+       al.add_last(last_five, al.get_element(arcos_list, i))
+
+
+   return {
+       "exists": True,
+       "reason": "Red de navegación óptima construida correctamente.",
+       "source": source,
+       "total_zones": total_zones,
+       "total_arcos": total_arcos,
+       "total_cost": total_cost,
+       "first_five": first_five,
+       "last_five": last_five
+   }
+
+
+
+
+def compare_arcos_req4(a1, a2):
+ 
+
+
+   source_1 = int(a1["source"])
+   source_2 = int(a2["source"])
+
+
+   if source_1 != source_2:
+       return source_1 < source_2
+
+
+   target_1 = int(a1["target"])
+   target_2 = int(a2["target"])
+
+
+   return target_1 < target_2
 
 
 def req_5(catalog, origen, destino):

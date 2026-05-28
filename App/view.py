@@ -99,12 +99,54 @@ def print_data(control, id):
     #TODO: Realizar la función para imprimir un elemento
     pass
 
-def print_req_1(control):
-    """
-        Función que imprime la solución del Requerimiento 1 en consola
-    """
-    # TODO: Imprimir el resultado del requerimiento 1
-    pass
+def print_req_1(cont):
+   """
+       Función que imprime la solución del Requerimiento 1 en consola
+   """
+
+
+   print("\nREQ. 1: Identificar trayectoria entre dos zonas de navegación")
+
+
+   source = input("Ingrese el identificador de la zona de origen: ")
+   destination = input("Ingrese el identificador de la zona de destino: ")
+
+
+   result = logic.req_1(cont, source, destination)
+
+
+   print("\n" + result["reason"])
+
+
+   if result["exists"] == False:
+       return
+
+
+   print("Total de zonas en la trayectoria:", result["total_zones"])
+
+
+   vertices = result["vertices"]
+
+
+   for i in range(al.size(vertices)):
+       vertex = al.get_element(vertices, i)
+
+
+       print("\nZona", i + 1)
+       print("Identificador:", vertex["id"])
+       print("Latitud:", vertex["lat"])
+       print("Longitud:", vertex["lon"])
+       print("Número de embarcaciones:", vertex["num_vessels"])
+
+
+       print("Primeros nombres de embarcaciones:")
+       for j in range(al.size(vertex["vessel_names_first"])):
+           print(" -", al.get_element(vertex["vessel_names_first"], j))
+
+
+       print("Últimos nombres de embarcaciones:")
+       for j in range(al.size(vertex["vessel_names_last"])):
+           print(" -", al.get_element(vertex["vessel_names_last"], j))
 
 
 def print_req_2(control):
@@ -190,11 +232,56 @@ def print_req_3(control):
     print(tabulate(top_n_vertices, headers="keys", tablefmt="fancy_grid"))
 
 def print_req_4(control):
-    """
-        Función que imprime la solución del Requerimiento 4 en consola
-    """
-    # TODO: Imprimir el resultado del requerimiento 4
-    pass
+   """
+       Función que imprime la solución del Requerimiento 4 en consola
+   """
+   # TODO: Imprimir el resultado del requerimiento 4
+   print("\nREQ. 4: Construir la red de navegación óptima")
+
+
+   source = input("Ingrese el identificador de la zona de navegación de origen: ")
+
+
+   result = logic.req_4(control, source)
+
+
+   print("\n" + result["reason"])
+
+
+   if result["exists"] == False:
+       return
+
+
+   print("Zona de navegación de origen:", result["source"])
+   print("Número total de zonas conectadas:", result["total_zones"])
+   print("Número total de arcos de la red:", result["total_arcos"])
+   print("Costo total de la red:", result["total_cost"])
+
+
+   print("\nPrimeros arcos de la red:")
+   imprimir_arcos_req4(result["first_five"])
+
+
+   if result["total_arcos"] > 5:
+       print("\nÚltimos arcos de la red:")
+       imprimir_arcos_req4(result["last_five"])
+
+
+
+
+def imprimir_arcos_req4(lista_arcos):
+   for i in range(al.size(lista_arcos)):
+       arco = al.get_element(lista_arcos, i)
+
+
+       print("\nArco", i + 1)
+       print("Zona de origen:", arco["source"])
+       print("Zona de destino:", arco["target"])
+       print("Peso del arco:", arco["weight"])
+
+
+
+
 
 
 def print_req_5(control):
