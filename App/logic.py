@@ -467,7 +467,7 @@ def req_2(catalog, cluster_id, radio):
     lat_origen = zona_origen["lat"]
     lon_origen = zona_origen["lon"]
 
-
+# req_2: uso de gr.vertices() creado con ayuda de IAG para justificar uso obligatorio de grafos
     vertices_grafo = gr.vertices(catalog["g_distance"])
 
     zonas_en_radio = al.new_list()
@@ -498,7 +498,7 @@ def req_2(catalog, cluster_id, radio):
         "total_zonas": al.size(zonas_en_radio),
         "zonas": zonas_en_radio
     }
-
+ # funcion creada con ayuda de IAG
 def comparar_zonas_req2(zona_a, zona_b):
    
     if zona_a["distancia"] != zona_b["distancia"]:
@@ -575,7 +575,7 @@ def req_4(catalog, source):
        }
 
 
-   search = dij.dijkstra(graph, source)
+   search = djk.dijkstra(graph, source)
 
 
    visited = search["visited"]
