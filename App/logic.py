@@ -767,6 +767,7 @@ def req_6(catalog):
     Retorna el resultado del requerimiento 6
     """
     # TODO: Modificar el requerimiento 6
+    # funcion creada con ayuda de IAG
     grafo_dirigido = catalog["g_distance"]
     vertices_lista = gr.vertices(grafo_dirigido)
     total_vertices = gr.order(grafo_dirigido)
@@ -854,6 +855,7 @@ def crear_grafo_no_dirigido(grafo_dirigido, vertices, total_v, catalog):
     return grafo_nodir
 
 def procesar_subred(vertices_lista, total_vertices, mapa_subred, visited_map, catalog):
+    # funcion creada con ayuda de IAG
     nodos_subred = al.new_list()
     total_viajes = 0
     suma_velocidades = 0.0
