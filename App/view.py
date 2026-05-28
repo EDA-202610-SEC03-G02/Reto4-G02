@@ -202,7 +202,47 @@ def print_req_5(control):
         Función que imprime la solución del Requerimiento 5 en consola
     """
     # TODO: Imprimir el resultado del requerimiento 5
-    pass
+
+    origen  = input("Ingrese el identificador de la zona de origen: ").strip()
+    destino = input("Ingrese el identificador de la zona de destino: ").strip()
+
+  
+    resultado = logic.req_5(control, origen, destino)
+
+    if "error" in resultado:
+        print("\nError: " + resultado["error"])
+        return
+
+    if not resultado["existe_ruta"]:
+        print("\n" + "="*60)
+        print("REQ. 5 — Ruta más eficiente entre zonas de navegación")
+        print("="*60)
+        print(f"No existe ruta entre '{resultado['origen']}' y '{resultado['destino']}'.")
+        return
+
+    print("\n" + "="*60)
+    print("REQ. 5 — Ruta más eficiente entre zonas de navegación")
+    print("="*60)
+    print("Si hay ruta entre las zonas: ")
+    print("Costo total (km):" + str(resultado["costo_total"]))
+    print("Total de zonas en ruta:" + str(resultado["total_zonas"]))
+    print("Total de arcos en ruta:" + str(resultado["total_arcos"]))
+    print("="*60 + "\n")
+
+    vertices_lista = resultado["vertices"]
+    filas = []
+
+    for i in range(al.size(vertices_lista)):
+        vertice = al.get_element(vertices_lista, i)
+        filas.append({
+            "ID Zona": vertice["id"],
+            "Latitud": vertice["lat"],
+            "Longitud": vertice["lon"],
+            "Embarcaciones": vertice["num_embarcaciones"],
+            "Peso arco siguiente": vertice["peso_arco_sig"]
+        })
+
+    print(tabulate(filas, headers="keys", tablefmt="fancy_grid"))
 
 
 def print_req_6(control):

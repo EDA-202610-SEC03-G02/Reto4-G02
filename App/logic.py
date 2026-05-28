@@ -7,6 +7,8 @@ from DataStructures.Map import map_linear_probing as mp
 from DataStructures.List import array_list as al
 from DataStructures.Graph import diagraph as gr
 from DataStructures.Priority_queue import priority_queue as pq
+from DataStructures.Graph import dijsktra as djk
+from DataStructures.Stack import stack as st
 
 data_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__))) + '/Data/Data/'
 
@@ -450,12 +452,91 @@ def req_4(catalog):
     pass
 
 
-def req_5(catalog):
+def req_5(catalog, origen, destino):
     """
     Retorna el resultado del requerimiento 5
     """
     # TODO: Modificar el requerimiento 5
-    pass
+    
+    if not gr.contains_vertex(catalog["g_distance"], origen):
+        return {"error": f"La zona de origen '{origen}' no existe en el grafo."}
+
+    if not gr.contains_vertex(catalog["g_distance"], destino):
+        return {"error": f"La zona de destino '{destino}' no existe en el grafo."}
+
+    estructura_dijkstra = djk.dijkstra(catalog["g_distance"], origen)
+
+    existe_ruta = djk.has_path_to(destino, estructura_dijkstra)
+
+    if not existe_ruta:
+        return {
+            "existe_ruta": False,
+            "origen": origen,
+            "destino": destino
+        }
+
+    costo_total = djk.dist_to(destino, estructura_dijkstra)
+    stack_ruta = djk.path_to(destino, estructura_dijkstra)
+
+    lista_ruta = al.new_list()
+
+    while not st.is_empty(stack_ruta):
+        vertex_id = st.pop(stack_ruta)
+        al.add_last(lista_ruta, vertex_id)
+
+    total_zonas = al.size(lista_ruta)
+    total_arcos = total_zonas - 1
+
+    vertices_a_mostrar = al.new_list()
+
+    if total_zonas <= 10:
+
+        for i in range(total_zonas):
+            vertex_id = al.get_element(lista_ruta, i)
+            info = construir_info_vertice_req5(catalog, lista_ruta, i, total_zonas)
+            al.add_last(vertices_a_mostrar, info)
+    else:
+        
+        for i in range(5):
+            info = construir_info_vertice_req5(catalog, lista_ruta, i, total_zonas)
+            al.add_last(vertices_a_mostrar, info)
+            
+        for i in range(total_zonas - 5, total_zonas):
+            info = construir_info_vertice_req5(catalog, lista_ruta, i, total_zonas)
+            al.add_last(vertices_a_mostrar, info)
+
+    return {
+        "existe_ruta":  True,
+        "origen":       origen,
+        "destino":      destino,
+        "costo_total":  round(costo_total, 2),
+        "total_zonas":  total_zonas,
+        "total_arcos":  total_arcos,
+        "vertices":     vertices_a_mostrar
+    }
+
+def construir_info_vertice_req5(catalog, lista_ruta, indice, total_zonas):
+    
+    vertex_id = al.get_element(lista_ruta, indice)
+    vertice = mp.get(catalog["vertices_map"], vertex_id)
+
+    num_embarcaciones = al.size(vertice["mmsi_list"])
+    
+    if indice < total_zonas - 1:
+        siguiente_id = al.get_element(lista_ruta, indice + 1)
+        edge_id = vertex_id + "-" + siguiente_id
+        edge_info = mp.get(catalog["edge_info_map"], edge_id)
+        peso_siguiente = round(edge_info["distance"], 2)
+    else:
+        peso_siguiente = "N/A (destino final)"
+
+    return {
+        "id":               vertex_id,
+        "lat":              vertice["lat"] if vertice["lat"] is not None else "Unknown",
+        "lon":              vertice["lon"] if vertice["lon"] is not None else "Unknown",
+        "num_embarcaciones": num_embarcaciones,
+        "peso_arco_sig":    peso_siguiente
+    }
 
 def req_6(catalog):
     """
